@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Songwriting App</title>
+<style>
+  :root{--bg:#f6f4ef;--card:#fff;--ink:#222;--mute:#777;--acc:#c2410c;--line:#ddd;--hi:#fff3e8}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,sans-serif}
+  .app{display:grid;grid-template-columns:minmax(280px,380px) 1fr;gap:16px;padding:16px;max-width:1200px;margin:auto}
+  @media(max-width:800px){.app{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+  h1{font-size:18px;margin:0 0 12px}
+  label{font-size:13px;color:var(--mute);display:block;margin:10px 0 4px}
+  select,input,button{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+  button{cursor:pointer}
+  button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+  textarea{width:100%;height:300px;font:13px/1.4 ui-monospace,Consolas,monospace;border:1px solid var(--line);border-radius:6px;padding:8px}
+  .hint{font-size:12px;color:var(--mute);margin-top:6px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .title{font-size:26px;font-weight:700;border:0;border-bottom:1px dashed transparent;padding:0;width:100%;background:none}
+  .title:hover,.title:focus{border-bottom-color:var(--line);outline:0}
+  .sheet .meta{color:var(--mute);margin:4px 0 18px}
+  .sec{margin:22px 0 6px;font-weight:700;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--acc)}
+  .ln{display:flex;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end}
+  .u{display:inline-flex;flex-direction:column;margin-right:.5ch}
+  .cs{display:flex;gap:.6ch;min-height:1.4em}
+  .c{font:700 15px ui-monospace,Consolas,monospace;color:var(--acc);cursor:pointer;border-radius:4px;padding:0 2px}
+  .c:hover{background:#fde2d0;text-decoration:line-through}
+  .w{white-space:pre;font-size:17px;cursor:pointer;border-radius:4px;padding:0 1px}
+  .w:hover{background:var(--hi)}
+  .w.on{background:#fde2d0}
+  .add{font:700 15px ui-monospace,monospace;color:var(--mute);cursor:pointer;border:1px dashed var(--line);border-radius:4px;padding:0 6px;background:none}
+  #pal{position:absolute;display:none;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.15);padding:8px;z-index:10;width:250px}
+  #pal .g{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+  #pal button{padding:4px 0;font-size:14px}
+  #pal button small{display:block;font-size:10px;color:var(--mute)}
+  #pal .ft{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:12px;color:var(--mute)}
+  @media print{
+    body{background:#fff}.app{display:block;padding:0}.ctl,#pal,.add{display:none!important}.card{border:0;padding:0}
+    .c:hover,.w:hover{background:none;text-decoration:none}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card ctl">
+    <h1>Songwriting App</h1>
+    <div class="row">
+      <div><label>Key</label><select id="key"></select></div>
+      <div style="margin-left:auto;align-self:end"><button class="pri" onclick="window.print()">Save as PDF</button></div>
+    </div>
+    <label>Paste a song (title, then chord numerals above each lyric line)</label>
+    <textarea id="src" spellcheck="false" placeholder="Paste song here..."></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="pri" onclick="importText()">Import</button>
+      <button onclick="exportText()">Copy back to text</button>
+    </div>
+    <div class="hint">Pasting imports automatically. Headings end in a colon (Verse 1:). Chords are numerals (I, ii, IV, V, flat VII). A chord line with no lyric below it becomes an instrumental row. Then click any word on the right to add a chord, or click a chord to remove it.</div>
+  </div>
+  <div class="card sheet" id="out"></div>
+</div>
+<div id="pal"></div>
+
+<script>
+const SAMPLE = `Dog Day
+
+Verse 1:
+I	I	V	IV
+Well I dread the day that my dog passes away
+V	IV	flat VII chord
+And I’m finding my own way to feel good about me
+I	I	V	IV
+And when I close the door, lock it up like it’s the war
+V	IV	flat VII chord
+Don’t know what I’m fighting for, but I’ll do it quietly
+
+Chorus:
+IV	V	I	IV
+Hey yeah, ooh oh
+IV	V	I
+Hey yeah yeah
+
+Verse 2:
+I	I	V	IV
+Now I’m headed back, saying I’m under attack
+V	IV	flat VII chord
+And I could use a little slack they already threw me
+I	I	V	IV
+Well I dread the day that my dog passes away
+V	IV	flat VII chord
+And I’m finding my own way to feel good about me
+
+Chorus:
+IV	V	I	IV
+Hey yeah, ooh oh
+IV	V	I
+Hey yeah yeah
+
+Bridge:
+I	I	V	IV
+V	IV	flat VII chord
+
+IV	V	I	IV
+Well I think about all the times that I let down
+IV	V	I
+I’ve gotta let it go
+IV	V	I	IV
+Cus when push to shove, I know I’m always above
+IV	V	I
+A dog will let you know
+
+I	I	V	IV
+V	IV	flat VII chord
+I	I	V	IV
+V	IV	I`;
+
+const SHARP=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const FLAT=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+const KEYS=['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+const FLATKEYS=['F','Bb','Eb','Ab','Db','Gb'];
+const DEG={I:0,II:2,III:4,IV:5,V:7,VI:9,VII:11};
+const KEYIDX={C:0,Db:1,D:2,Eb:3,E:4,F:5,'F#':6,Gb:6,G:7,Ab:8,A:9,Bb:10,B:11};
+const NUM=/^[b#]?(?:VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i)(?:maj7|sus[24]?|dim|aug|7|°)?$/;
+const PALETTE=['I','ii','iii','IV','V','vi','vii°','bVII','bIII','bVI','iv','II'];
+
+let song={title:'',items:[]}; // items: {sec:'name'} | {w:[words],at:{idx:[nums]}} | {inst:[nums]}
+const $=id=>document.getElementById(id);
+KEYS.forEach(k=>{const o=document.createElement('option');o.value=o.textContent=k;$('key').appendChild(o)});
+$('key').value='G';
+
+function chordName(num,key){
+  const m=num.match(/^([b#]?)(VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i)(.*)$/);
+  if(!m) return num;
+  const [,acc,rn,rest]=m;
+  const minor=rn===rn.toLowerCase();
+  const semi=DEG[rn.toUpperCase()]+(acc==='b'?-1:acc==='#'?1:0);
+  const root=(KEYIDX[key]+semi+120)%12;
+  const name=(FLATKEYS.includes(key)?FLAT:SHARP)[root];
+  const q=rest==='°'?'dim':rest;
+  return name+(minor&&!q.startsWith('dim')?'m':'')+q;
+}
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- import ---------- */
+function normChordLine(t){
+  return t.replace(/flat\s+([ivIV]+)\s*chord/gi,(_,r)=>'b'+r).replace(/sharp\s+([ivIV]+)\s*chord/gi,(_,r)=>'#'+r);
+}
+function isChordLine(t){
+  const toks=normChordLine(t).trim().split(/\s+/);
+  return toks.length>0&&toks[0]!==''&&toks.every(x=>NUM.test(x));
+}
+function importText(){
+  const lines=$('src').value.replace(/\r/g,'').split('\n');
+  const items=[];let title='',pending=null,first=true;
+  const flush=()=>{if(pending){items.push({inst:pending});pending=null}};
+  for(let raw of lines){
+    const t=raw.trim();
+    if(!t){flush();continue}
+    if(first&&!isChordLine(t)&&!/[:\]]$/.test(t)){title=t;first=false;continue}
+    first=false;
+    if(isChordLine(t)){flush();pending=normChordLine(t).trim().split(/\s+/);continue}
+    if(/^\[.*\]$|:$/.test(t)){flush();items.push({sec:t.replace(/^\[|\]$|:$/g,'').trim()});continue}
+    const words=t.split(/\s+/);const at={};
+    if(pending){
+      pending.forEach((c,i)=>{const w=Math.min(words.length-1,Math.floor(i*words.length/pending.length));(at[w]=at[w]||[]).push(c)});
+      pending=null;
+    }
+    items.push({w:words,at});
+  }
+  flush();
+  song={title,items};render();
+}
+function exportText(){
+  let out=song.title+'\n';
+  for(const it of song.items){
+    if(it.sec!==undefined) out+='\n'+it.sec+':\n';
+    else if(it.inst) out+=it.inst.join('\t')+'\n';
+    else{
+      const cs=[];Object.keys(it.at).map(Number).sort((a,b)=>a-b).forEach(i=>cs.push(...it.at[i]));
+      if(cs.length) out+=cs.join('\t')+'\n';
+      out+=it.w.join(' ')+'\n';
+    }
+  }
+  $('src').value=out;
+  if(navigator.clipboard) navigator.clipboard.writeText(out).catch(()=>{});
+}
+
+/* ---------- render ---------- */
+function render(){
+  const key=$('key').value;
+  let h=`<input class="title" id="ttl" value="${esc(song.title)}" placeholder="Song title"><div class="meta">Key of ${key}</div>`;
+  song.items.forEach((it,i)=>{
+    if(it.sec!==undefined){h+=`<div class="sec">${esc(it.sec)}</div>`;return}
+    if(it.inst){
+      h+=`<div class="ln">`+it.inst.map((c,j)=>`<span class="u"><span class="cs"><span class="c" data-i="${i}" data-j="${j}" title="Click to remove">${esc(chordName(c,key))}</span></span><span class="w">&nbsp;&nbsp;&nbsp;</span></span>`).join('')
+        +`<button class="add" data-i="${i}" data-inst="1" title="Add chord">+</button></div>`;
+      return;
+    }
+    h+=`<div class="ln">`+it.w.map((w,k)=>{
+      const cs=(it.at[k]||[]).map((c,j)=>`<span class="c" data-i="${i}" data-k="${k}" data-j="${j}" title="Click to remove">${esc(chordName(c,key))}</span>`).join('');
+      return `<span class="u"><span class="cs">${cs}</span><span class="w" data-i="${i}" data-k="${k}">${esc(w)}</span></span>`;
+    }).join('')+`</div>`;
+  });
+  $('out').innerHTML=h;
+  $('ttl').oninput=e=>{song.title=e.target.value};
+}
+
+/* ---------- editing ---------- */
+const pal=$('pal');let target=null;
+function openPal(el,t){
+  target=t;const key=$('key').value;
+  pal.innerHTML=`<div class="g">`+PALETTE.map(n=>`<button data-n="${n}">${n}<small>${chordName(n,key)}</small></button>`).join('')+`</div>`
+    +`<div class="ft"><label style="margin:0"><input type="checkbox" id="sev"> add 7</label><button id="cls">Close</button></div>`;
+  const r=el.getBoundingClientRect();
+  pal.style.display='block';
+  pal.style.left=Math.min(window.scrollX+r.left,window.scrollX+innerWidth-270)+'px';
+  pal.style.top=(window.scrollY+r.bottom+6)+'px';
+}
+function closePal(){pal.style.display='none';target=null;document.querySelectorAll('.w.on').forEach(e=>e.classList.remove('on'))}
+pal.onclick=e=>{
+  e.stopPropagation();
+  if(e.target.id==='cls'){closePal();return}
+  const b=e.target.closest('button[data-n]');if(!b||!target)return;
+  let n=b.dataset.n;if($('sev').checked&&!/[7°]/.test(n))n+='7';
+  const it=song.items[target.i];
+  if(target.inst) it.inst.push(n);
+  else (it.at[target.k]=it.at[target.k]||[]).push(n);
+  const keep=target;render();
+  const el=keep.inst?document.querySelector(`.add[data-i="${keep.i}"]`):document.querySelector(`.w[data-i="${keep.i}"][data-k="${keep.k}"]`);
+  if(el){el.classList&&el.classList.add('on');target=keep;openPal(el,keep)}
+};
+$('out').onclick=e=>{
+  e.stopPropagation();
+  const c=e.target.closest('.c');
+  if(c){
+    const it=song.items[+c.dataset.i];
+    if(it.inst){it.inst.splice(+c.dataset.j,1);if(!it.inst.length)song.items.splice(+c.dataset.i,1)}
+    else{const a=it.at[+c.dataset.k];a.splice(+c.dataset.j,1);if(!a.length)delete it.at[+c.dataset.k]}
+    closePal();render();return;
+  }
+  const w=e.target.closest('.w[data-k]');
+  if(w){closePal();w.classList.add('on');openPal(w,{i:+w.dataset.i,k:+w.dataset.k});return}
+  const a=e.target.closest('.add');
+  if(a){closePal();openPal(a,{i:+a.dataset.i,inst:true})}
+};
+document.addEventListener('click',e=>{if(!pal.contains(e.target))closePal()});
+$('key').onchange=()=>{closePal();render()};
+$('src').addEventListener('paste',()=>setTimeout(importText,0));
+
+$('src').value=SAMPLE;importText();
+</script>
+</body>
+</html>
